@@ -101,12 +101,13 @@ public class LrpService extends Service {
         public void measure(long nanoTime) {
             final long sendTime = nanoTime / 1000;
             final String message = "measure(): " + LrpHandler.measureFromPast(sendTime) + " us";
-            Log.i(TAG, message);
+            Log.d(TAG, message);
             LrpHandler.toastWithHandler(eventHandler, message);
         }
 
         public void sendInMs(long nanoTime, long ms) {
-            Log.i(TAG, "sendInMs: " + ((ms * 1000000 - (System.nanoTime() - nanoTime)) / 1000000));
+            ms = ms + 2; // Mitigate calling latency
+            Log.d(TAG, "sendInMs: " + ((ms * 1000000 - (System.nanoTime() - nanoTime)) / 1000000));
             LrpHandler.sendPacket((int) ((ms * 1000000 - (System.nanoTime() - nanoTime)) / 1000000));
         }
     };
