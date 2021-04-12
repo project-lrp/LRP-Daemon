@@ -98,6 +98,9 @@ public class LrpService extends Service {
     }
 
     private final ILrpBoundService.Stub binder = new ILrpBoundService.Stub() {
+        private long srData = 0;
+        private long drxDoze = 0;
+
         public void measure(long nanoTime) {
             final long sendTime = nanoTime / 1000;
             final String message = "measure(): " + LrpHandler.measureFromPast(sendTime) + " us";
@@ -105,10 +108,22 @@ public class LrpService extends Service {
             LrpHandler.toastWithHandler(eventHandler, message);
         }
 
+        public void startParInf() {
+            this.drxDoze = LrpHandler.getConfigDrx();
+            this.srData = LrpHandler.getConfigSch();
+            Log.e(TAG, Long.toString(this.drxDoze) + ", " + Long.toString(this.srData));
+        }
+
+        public void reduceDozeAndSchedule(long nanoTime, long ms) {
+            ms = ms + 2; // Mitigate calling latency
+            Log.d(TAG, "sendInMs: " + ((ms * 1000000 - (System.nanoTime() - nanoTime)) / 1000000));
+            LrpHandler.sendPacket((int) ((ms * 1000000 - (System.nanoTime() - nanoTime)) / 1000000), (int)this.drxDoze, (int)this.srData);
+        }
+
         public void sendInMs(long nanoTime, long ms) {
             ms = ms + 2; // Mitigate calling latency
             Log.d(TAG, "sendInMs: " + ((ms * 1000000 - (System.nanoTime() - nanoTime)) / 1000000));
-            LrpHandler.sendPacket((int) ((ms * 1000000 - (System.nanoTime() - nanoTime)) / 1000000));
+            LrpHandler.sendPacket((int) ((ms * 1000000 - (System.nanoTime() - nanoTime)) / 1000000), (int)this.drxDoze, (int)this.srData);
         }
     };
 }

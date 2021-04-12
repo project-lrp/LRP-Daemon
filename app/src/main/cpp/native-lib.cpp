@@ -4,7 +4,9 @@
 #include <unistd.h>
 
 extern "C" {
-void send_lrp(int next_packet_interval);
+void send_lrp(int next_packet_interval, int drx, int sr);
+int get_config_drx();
+int get_config_sch();
 }
 
 extern "C"
@@ -27,7 +29,19 @@ Java_com_lrptest_daemon_LrpHandler_doNativeWork(JNIEnv *env, jclass clazz) {
 }
 extern "C"
 JNIEXPORT jlong JNICALL
-Java_com_lrptest_daemon_LrpHandler_sendPacket(JNIEnv *env, jclass clazz, jint ms) {
-    send_lrp(ms);
+Java_com_lrptest_daemon_LrpHandler_sendPacket(JNIEnv *env, jclass clazz, jint ms, jint drx, jint sr) {
+    send_lrp(ms, drx, sr);
     return 1;
+}
+
+extern "C"
+JNIEXPORT jlong JNICALL
+Java_com_lrptest_daemon_LrpHandler_getConfigDrx(JNIEnv *env, jclass clazz) {
+    return get_config_drx();
+}
+
+extern "C"
+JNIEXPORT jlong JNICALL
+Java_com_lrptest_daemon_LrpHandler_getConfigSch(JNIEnv *env, jclass clazz) {
+    return get_config_sch();
 }

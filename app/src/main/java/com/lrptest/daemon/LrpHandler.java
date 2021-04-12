@@ -54,5 +54,7 @@ public class LrpHandler {
 
     public static native long getNativeTime();
     public static native long doNativeWork();
-    public static native long sendPacket(int ms);
+    public static native long sendPacket(int ms, int drx, int sr);
+    public static native long getConfigDrx();
+    public static native long getConfigSch();
 }
