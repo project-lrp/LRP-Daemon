@@ -5,7 +5,6 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
 import android.content.BroadcastReceiver;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -15,16 +14,24 @@ import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
 import android.os.Message;
+import android.telephony.CellInfo;
+import android.telephony.TelephonyManager;
 import android.util.Log;
 import android.widget.Toast;
 
 import androidx.annotation.RequiresApi;
+
+import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class LrpService extends Service {
     private static final int ONGOING_NOTIFICATION_ID = 1000;
     final static String TAG = "LRP_LOG_DAEMON_SRV";
     private LrpUDP udpServer = null;
     private Handler eventHandler = null;
+    private TelephonyManager mTelephonyManager;
+    List<CellInfo> curCellInfoList = null;
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     @Override
@@ -38,6 +45,41 @@ public class LrpService extends Service {
                         .build();
 
         startForeground(ONGOING_NOTIFICATION_ID, notification);
+    }
+
+    public void callGetCellIdAsyncTask(final TelephonyManager telephonyManager) {
+        final Handler handler = new Handler();
+        Timer timer = new Timer();
+        TimerTask doAsynchronousTask = new TimerTask() {
+            String message = "";
+            String old_message = "";
+
+            @Override
+            public void run() {
+                handler.post(new Runnable() {
+                    public void run() {
+                        try {
+                            CheckCellIdTask checkCellIdTask = new CheckCellIdTask();
+//                            if (ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+//                                Log.e(TAG, "No Permission ");
+//                                return;
+//                            }
+                            curCellInfoList = telephonyManager.getAllCellInfo();
+                            message = checkCellIdTask.execute(curCellInfoList).get();
+//                            Log.i(TAG, "New Message: " + message);
+                            if (!message.equals(old_message)) {
+                                Log.i(TAG, "CellID Changed!: " + message);
+                                binder.startParInf();
+                            }
+                            old_message = message;
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+                });
+            }
+        };
+        timer.schedule(doAsynchronousTask, 0, 1000); //execute in every 200 ms
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -75,6 +117,17 @@ public class LrpService extends Service {
         };
         udpServer = new LrpUDP(eventHandler);
 
+        mTelephonyManager = (TelephonyManager) this.getApplicationContext().getSystemService(Context.TELEPHONY_SERVICE);
+        try {
+            curCellInfoList = mTelephonyManager.getAllCellInfo();
+            Log.d(TAG, "check cell info: "+ curCellInfoList);
+        } catch (SecurityException se) {
+            se.printStackTrace();
+            Log.e(TAG, "NO permission to check cell info " + se.getMessage());
+        }
+        callGetCellIdAsyncTask(mTelephonyManager);
+        Log.d(TAG, "LRP service started");
+
         Toast.makeText(this, "LRP service started", Toast.LENGTH_SHORT).show();
         return START_STICKY;
     }
@@ -111,7 +164,7 @@ public class LrpService extends Service {
         public void startParInf() {
             this.drxDoze = LrpHandler.getConfigDrx();
             this.srData = LrpHandler.getConfigSch();
-            Log.e(TAG, Long.toString(this.drxDoze) + ", " + Long.toString(this.srData));
+            Log.d(TAG, this.drxDoze + ", " + this.srData);
         }
 
         public void reduceDozeAndSchedule(long nanoTime, long ms) {
